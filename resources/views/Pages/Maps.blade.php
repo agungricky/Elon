@@ -1,0 +1,426 @@
+@extends('Main')
+@section('content')
+    <div class="courses-area mg-b-15">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-lg-12 col-md-6 col-sm-6 col-xs-12">
+                    <div class="white-box">
+                        <div class="card">
+                            <div class="card-body">
+                                <h2 class="card-title">MAPS Lokasi Pengguna</h2>
+                                <p class="font-weight-500">Lokasi Anda saat ini diperbarui menggunakan data sensor GPS. Peta
+                                    di
+                                    bawah
+                                    akan terus menampilkan posisi terbaru Anda sesuai dengan data yang diterima dari sensor.
+                                    Pastikan sensor GPS Anda aktif untuk mendapatkan hasil yang akurat.</p>
+                                <div id="map" style="height: 500px; width: 100%; position: relative;"></div>
+                                <p id="location-info" class="mt-1">Menunggu data GPS...</p>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12 col-md-4 mb-3">
+                                <div>
+                                    <h4 class="mb-4">Data Sensor Udara</h4>
+                                    <table class="table table-bordered table-striped">
+                                        <thead class="table-primary text-center">
+                                            <tr>
+                                                <th class="text-center">Jenis Sensor</th>
+                                                <th class="text-center">Keterangan</th>
+                                                <th class="text-center">Nilai</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="text-center">
+                                            <tr>
+                                                <td>CO<sub>2</sub></td>
+                                                <td id="st_co2"></td>
+                                                <td id="co2"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Kelembapan Udara</td>
+                                                <td id="st_hum"></td>
+                                                <td id="hum"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Temperatur Udara</td>
+                                                <td class="st_temp"></td>
+                                                <td id="temp"></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-md-4 mb-3">
+                                <div>
+                                    <h4 class="mb-4">Data Sensor Cahaya</h4>
+                                    <table class="table table-bordered table-striped">
+                                        <thead class="table-warning text-center">
+                                            <tr>
+                                                <th>Jenis Parameter</th>
+                                                <th>Keterangan</th>
+                                                <th>Nilai</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="text-center">
+                                            <tr>
+                                                <td>Intensitas Cahaya</td>
+                                                <td id="st_cahaya"></td>
+                                                <td class="luminosity"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Pertumbuhan Vegetatif</td>
+                                                <td id="st_cahaya_vegetatif"></td>
+                                                <td class="luminosity"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Pembungaan</td>
+                                                <td id="st_cahaya_pembungaan"></td>
+                                                <td class="luminosity"></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="col-12 col-md-4 mb-3">
+                                <div>
+                                    <h4 class="mb-4">Data Sensor Tanah</h4>
+                                    <table class="table table-bordered table-striped">
+                                        <thead class="table-success text-center">
+                                            <tr>
+                                                <th>Jenis Parameter</th>
+                                                <th>Keterangan</th>
+                                                <th>Nilai</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="text-center">
+                                            <tr>
+                                                <td>Konduktifitas</td>
+                                                <td id="st_konduktivitas"></td>
+                                                <td id="conductivityValue"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Kelembapan Tanah</td>
+                                                <td id="st_kelembaban"></td>
+                                                <td id="moistureValue"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Kadar Nitrogen</td>
+                                                <td id="st_nitrogen"></td>
+                                                <td id="nitrogenValue"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Kadar pH</td>
+                                                <td id="st_ph"></td>
+                                                <td id="phValue"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Kadar Posfor</td>
+                                                <td id="st_p"></td>
+                                                <td id="phosphorusValue"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Kadar Kalium</td>
+                                                <td id="st_k"></td>
+                                                <td id="potassiumValue"></td>
+                                            </tr>
+                                            <tr>
+                                                <td>Suhu Tanah</td>
+                                                <td class="st_temp"></td>
+                                                <td id="temperatureValue"></td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script>
+        function toDMS(deg, isLat) {
+            const absolute = Math.abs(deg);
+            const degrees = Math.floor(absolute);
+            const minutesNotTruncated = (absolute - degrees) * 60;
+            const minutes = Math.floor(minutesNotTruncated);
+            const seconds = Math.floor((minutesNotTruncated - minutes) * 60);
+
+            const direction = deg >= 0 ?
+                (isLat ? 'N' : 'E') :
+                (isLat ? 'S' : 'W');
+
+            return `${degrees}°${minutes}'${seconds}" ${direction}`;
+        }
+
+        var map = L.map('map').setView([0, 0], 2);
+
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        let firstUpdate = true;
+        let marker;
+
+        $(document).ready(function() {
+            setInterval(() => {
+                $.ajax({
+                    type: "GET",
+                    url: "https://elon-2025-default-rtdb.asia-southeast1.firebasedatabase.app/maps.json",
+                    dataType: "JSON",
+                    success: function(response) {
+                        if (response && response.lat && response.lng) {
+                            let lat = response.lat;
+                            let lng = response.lng;
+
+                            let latDMS = toDMS(lat, true);
+                            let lngDMS = toDMS(lng, false);
+
+                            if (firstUpdate) {
+                                map.setView([lat, lng], 18);
+                                firstUpdate = false;
+                            } else {
+                                map.setView([lat, lng], map.getZoom());
+                            }
+
+                            if (marker) {
+                                map.removeLayer(marker);
+                            }
+
+                            marker = L.marker([lat, lng]).addTo(map)
+                                .bindPopup(`Lokasi GPS: Lat ${lat}, Lng ${lng}`)
+                                .openPopup();
+
+                            $('#location-info').text(`Lokasi saat ini: ${latDMS} ${lngDMS}`);
+                        } else {
+                            $('#location-info').text('Data GPS tidak ditemukan.');
+                        }
+                    },
+                    error: function() {
+                        $('#location-info').text('Gagal mengambil data GPS.');
+                    }
+                });
+            }, 5000);
+
+            setInterval(() => {
+                $.ajax({
+                    type: "GET",
+                    url: "https://elon-2025-default-rtdb.asia-southeast1.firebasedatabase.app/.json",
+                    dataType: "json",
+                    success: function(response) {
+                        console.log();
+                        // UDARA
+                        $('#co2').text(response.SCD41.CO2 + ' ppm');
+                        co2(response.SCD41.CO2);
+
+                        $('#hum').text(response.SCD41.hum + ' %');
+                        kelembabanUdara(response.SCD41.hum);
+
+                        $('#temp').html(response.SCD41.temp + ' &deg;C');
+                        temperaturUdara(response.SCD41.temp);
+
+                        // CAHAYA
+                        $('.luminosity').text(response.ldr.luminosity + ' lux');
+                        cahaya(response.ldr.luminosity);
+
+                        $('.luminosity').text(response.ldr.luminosity + ' lux');
+                        cahayaVegetatif(response.ldr.luminosity);
+
+                        $('.luminosity').text(response.ldr.luminosity + ' lux');
+                        cahayaPembungaan(response.ldr.luminosity);
+
+
+                        // TANAH
+                        $('#conductivityValue').text(response.soilSensor.conductivityValue + ' mS/cm');
+                        konduktivitasTanah(response.soilSensor.conductivityValue);
+
+                        $('#moistureValue').text(response.soilSensor.moistureValue + ' %');
+                        kelembabanTanah(response.soilSensor.moistureValue);
+
+                        $('#nitrogenValue').text(response.soilSensor.nitrogenValue + ' ppm');
+                        nitrogen(response.soilSensor.nitrogenValue);
+
+                        $('#phValue').text(response.soilSensor.phValue + ' pH');
+                        ph(response.soilSensor.phValue);
+
+                        $('#phosphorusValue').text(response.soilSensor.phosphorusValue + ' ppm');
+                        posfor(response.soilSensor.phosphorusValue);
+
+                        $('#potassiumValue').text(response.soilSensor.potassiumValue + ' ppm');
+                        kalium(response.soilSensor.potassiumValue);
+
+                        $('#temperatureValue').text(response.soilSensor.temperatureValue + ' °C');
+                        temperaturUdara(response.soilSensor.temperatureValue);
+                    }
+                });
+            }, 1000);
+
+            // ===================== UDARA ===================== //
+            function co2(nilai) {
+                if (nilai < 1000) {
+                    $('#st_co2').text('Rendah');
+                } else if (nilai >= 1000 && nilai <= 1200) {
+                    $('#st_co2').text('Normal');
+                } else if (nilai > 1200) {
+                    $('#st_co2').text('Tinggi');
+                }
+            }
+
+            function kelembabanUdara(nilai) {
+                if (nilai < 60) {
+                    $('#st_hum').text('Kering');
+                } else if (nilai >= 60 && nilai <= 80) {
+                    $('#st_hum').text('Ideal');
+                } else if (nilai > 80) {
+                    $('#st_hum').text('Sangat Lembab');
+                }
+            }
+
+            function temperaturUdara(nilai) {
+                if (nilai < 20) {
+                    $('.st_temp').text('Dingin');
+                } else if (nilai >= 20 && nilai <= 30) {
+                    $('.st_temp').text('Suhu Normal');
+                } else if (nilai > 30) {
+                    $('.st_temp').text('Panas');
+                }
+            }
+
+            // ===================== Cahaya ===================== //
+            function cahaya(nilai) {
+                if (nilai < 1000) {
+                    $('#st_cahaya').text('Rendah');
+                } else if (nilai >= 1000 && nilai <= 4000) {
+                    $('#st_cahaya').text('Pertumbuhan Optimal');
+                } else if (nilai > 4000) {
+                    $('#st_cahaya').text('Terlalu Tinggi');
+                }
+            }
+
+            function cahayaVegetatif(nilai) {
+                if (nilai < 15000) {
+                    $('#st_cahaya_vegetatif').text('Tidak optimal');
+                } else if (nilai >= 15000 && nilai <= 50000) {
+                    $('#st_cahaya_vegetatif').text('Optimal');
+                } else if (nilai > 50000) {
+                    $('#st_cahaya_vegetatif').text('Tidak optimal');
+                }
+            }
+
+            function cahayaPembungaan(nilai) {
+                if (nilai < 45000) {
+                    $('#st_cahaya_pembungaan').text('Tidak optimal');
+                } else if (nilai >= 45000 && nilai <= 70000) {
+                    $('#st_cahaya_pembungaan').text('Optimal');
+                } else if (nilai > 70000) {
+                    $('#st_cahaya_pembungaan').text('Tidak optimal');
+                }
+            }
+
+            // ===================== Tanah ===================== //
+            function nitrogen(nilai) {
+                if (nilai < 0.1) {
+                    $('#st_nitrogen').text('Sangat Rendah');
+                } else if (nilai >= 0.1 && nilai <= 0.2) {
+                    $('#st_nitrogen').text('Rendah');
+                } else if (nilai > 0.2 && nilai <= 0.5) {
+                    $('#st_nitrogen').text('Sedang');
+                } else if (nilai > 0.5 && nilai <= 0.75) {
+                    $('#st_nitrogen').text('Tinggi');
+                } else if (nilai > 0.75) {
+                    $('#st_nitrogen').text('Sangat Tinggi');
+                }
+            }
+
+            function posfor(nilai) {
+                if (nilai <= 4) {
+                    $('#st_p').text('Sangat Rendah');
+                } else if (nilai >= 5 && nilai <= 7) {
+                    $('#st_p').text('Rendah');
+                } else if (nilai >= 8 && nilai <= 10) {
+                    $('#st_p').text('Sedang');
+                } else if (nilai >= 11 && nilai <= 15) {
+                    $('#st_p').text('Tinggi');
+                } else if (nilai > 15) {
+                    $('#st_p').text('Sangat Tinggi');
+                }
+            }
+
+            function kalium(nilai) {
+                if (nilai < 0.1) {
+                    $('#st_k').text('Sangat Rendah');
+                } else if (nilai >= 0.1 && nilai <= 0.3) {
+                    $('#st_k').text('Rendah');
+                } else if (nilai >= 0.4 && nilai <= 0.5) {
+                    $('#st_k').text('Sedang');
+                } else if (nilai >= 0.6 && nilai <= 1.0) {
+                    $('#st_k').text('Tinggi');
+                } else if (nilai > 1.0) {
+                    $('#st_k').text('Sangat Tinggi');
+                }
+            }
+
+            function ph(nilai) {
+                if (nilai < 4.5) {
+                    $('#st_ph').text('Sangat Masam');
+                } else if (nilai >= 4.5 && nilai <= 5.5) {
+                    $('#st_ph').text('Masam');
+                } else if (nilai >= 5.5 && nilai <= 6.5) {
+                    $('#st_ph').text('Agak Masam');
+                } else if (nilai >= 6.6 && nilai <= 7.5) {
+                    $('#st_ph').text('Netral');
+                } else if (nilai >= 7.6 && nilai <= 8.5) {
+                    $('#st_ph').text('Agak Alkalis');
+                } else if (nilai > 8.5) {
+                    $('#st_ph').text('Alkalis');
+                } else {
+                    $('#st_ph').text('Data Tidak Valid');
+                }
+            }
+
+            function kelembabanTanah(nilai) {
+                if (nilai < 20) {
+                    $('#st_kelembaban').text('Sangat Kering');
+                } else if (nilai >= 20 && nilai <= 40) {
+                    $('#st_kelembaban').text('Kering');
+                } else if (nilai >= 41 && nilai <= 60) {
+                    $('#st_kelembaban').text('Lembab');
+                } else if (nilai >= 61 && nilai <= 80) {
+                    $('#st_kelembaban').text('Basah');
+                } else if (nilai >= 81) {
+                    $('#st_kelembaban').text('Sangat Basah');
+                } else {
+                    $('#st_kelembaban').text('Data Tidak Valid');
+                }
+            }
+
+            function konduktivitasTanah(nilai) {
+                if (nilai < 0.1) {
+                    $('#st_konduktivitas').text('Rendah');
+                } else if (nilai >= 0.1 && nilai <= 1.0) {
+                    $('#st_konduktivitas').text('Sedang');
+                } else if (nilai > 1.0) {
+                    $('#st_konduktivitas').text('Tinggi');
+                } else {
+                    $('#st_konduktivitas').text('Data Tidak Valid');
+                }
+            }
+
+            // function temperaturUdara(nilai) {
+            //     if (nilai < 20) {
+            //         $('#st_temperatur').text('Dingin');
+            //     } else if (nilai >= 20 && nilai <= 30) {
+            //         $('#st_temperatur').text('Suhu Normal');
+            //     } else if (nilai > 30) {
+            //         $('#st_temperatur').text('Panas');
+            //     }
+            // }
+        });
+    </script>
+@endsection
