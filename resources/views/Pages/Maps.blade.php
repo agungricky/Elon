@@ -182,27 +182,35 @@
                             let lat = response.lat;
                             let lng = response.lng;
 
-                            if (lat === prevLat && lng === prevLng) {
-                                return;
-                            }
+                            // Ambil data dari SQLite
+                            $.getJSON('/data', function(sqliteData) {
+                                const dataSudahAda = sqliteData.some(item =>
+                                    parseFloat(item.lat) === lat && parseFloat(item.lng) === lng
+                                );
 
-                            prevLat = lat;
-                            prevLng = lng;
+                                if (dataSudahAda) {
+                                    $('#location-info').text('Lokasi sudah tersimpan di database.');
+                                    return;
+                                }
 
-                            let latDMS = toDMS(lat, true);
-                            let lngDMS = toDMS(lng, false);
+                                if (lat === prevLat && lng === prevLng) {
+                                    return;
+                                }
 
-                            if (firstUpdate) {
-                                map.setView([lat, lng], 18);
-                                firstUpdate = false;
-                            } else {
-                                map.setView([lat, lng], map.getZoom());
-                            }
+                                prevLat = lat;
+                                prevLng = lng;
 
-                            $.get(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
-                                function(data) {
-                                    let namaTempat = (data && data.display_name) ? data
-                                        .display_name : `Lat: ${lat}, Lng: ${lng}`;
+                                // Ubah tampilan map
+                                if (firstUpdate) {
+                                    map.setView([lat, lng], 12);
+                                    firstUpdate = false;
+                                } else {
+                                    map.setView([lat, lng], map.getZoom());
+                                }
+
+                                // Reverse geocoding
+                                $.get(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, function(data) {
+                                    let namaTempat = (data && data.display_name) ? data.display_name : `Lat: ${lat}, Lng: ${lng}`;
 
                                     if (marker) {
                                         map.removeLayer(marker);
@@ -214,6 +222,7 @@
 
                                     $('#location-info').text(`Lokasi: ${namaTempat}`);
                                 });
+                            });
                         } else {
                             $('#location-info').text('Data GPS tidak ditemukan.');
                         }
@@ -224,57 +233,75 @@
                 });
             }, 2000);
 
-           $.ajax({
-    type: "GET",
-    url: "data", // pastikan ini route Laravel yang return JSON
-    dataType: "json",
-    success: function (response) {
-        response.forEach(item => {
-            // Parse index_id JSON
-            let indexData = {};
-            try {
-                indexData = JSON.parse(item.index_id);
-            } catch (e) {
-                console.warn("Gagal parse index_id", e);
-            }
+            $.ajax({
+                type: "GET",
+                url: "data", // pastikan ini route Laravel yang return JSON
+                dataType: "json",
+                success: function (response) {
+                    response.forEach(item => {
+                        // Parse index_id JSON
+                        let indexData = {};
+                        try {
+                            indexData = JSON.parse(item.index_id);
+                        } catch (e) {
+                            console.warn("Gagal parse index_id", e);
+                        }
 
-            const color = indexData.color ?? "#ff0000"; // fallback merah
-            const tempat = item.location_name ?? "Tanpa Nama";
+                        const color = indexData.color ?? "#ff0000"; // fallback merah
+                        const tempat = item.location_name ?? "Tanpa Nama";
 
-            // Buat icon standar peta dengan warna custom (pakai SVG base64 warna custom jika mau dinamis)
-            const iconSVG = `
-<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 64 64">
-  <path d="M32 0C19 0 8 11 8 24c0 14.3 17.7 34.4 22.6 40.1a2 2 0 0 0 2.9 0C38.3 58.4 56 38.3 56 24 56 11 45 0 32 0zm0 34a10 10 0 1 1 0-20 10 10 0 0 1 0 20z" fill="${color}"/>
-  <path d="M27 26l4 4 8-8-2-2-6 6-2-2z" fill="#fff"/>
-</svg>
-`;
+                        // Buat icon standar peta dengan warna custom (pakai SVG base64 warna custom jika mau dinamis)
+                        const iconSVG = `
+                            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 64 64">
+                            <path d="M32 0C19 0 8 11 8 24c0 14.3 17.7 34.4 22.6 40.1a2 2 0 0 0 2.9 0C38.3 58.4 56 38.3 56 24 56 11 45 0 32 0zm0 34a10 10 0 1 1 0-20 10 10 0 0 1 0 20z" fill="${color}"/>
+                            <path d="M27 26l4 4 8-8-2-2-6 6-2-2z" fill="#fff"/>
+                            </svg>
+                        `;
 
-const icon = L.divIcon({
-    html: iconSVG,
-    className: "", // kosongkan supaya tidak override style Leaflet
-    iconSize: [32, 32],
-    iconAnchor: [16, 32],
-    popupAnchor: [0, -32]
-});
+                        const icon = L.divIcon({
+                            html: iconSVG,
+                            className: "", 
+                            iconSize: [32, 32],
+                            iconAnchor: [16, 32],
+                            popupAnchor: [0, -32]
+                        });
+
+                        const rawTanggal = indexData.tanggal ?? null;
+                        let formattedTanggal = '-';
+
+                        if (rawTanggal) {
+                            const dateObj = new Date(rawTanggal);
+                            formattedTanggal = dateObj.toLocaleDateString('id-ID', {
+                                day: '2-digit',
+                                month: 'long',
+                                year: 'numeric'
+                            });
+                        }
 
 
-            const popupText = `
-                📍 ${tempat}<br>
-                🕒 ${indexData.tanggal ?? '-'}<br>
-                🌡️ Suhu: ${item.temp} °C<br>
-                💧 Kelembapan: ${item.hum} %<br>
-                🟡 CO₂: ${item.co2} ppm
-            `;
+                        const popupText = `
+                            📍 ${tempat}<br><hr>
+                            diambil : ${formattedTanggal ?? '-'} <br>
+                            kondisi :  Kondisi Sedikit Basah <br>
+                        `;
 
-            L.marker([parseFloat(item.lat), parseFloat(item.lng)], { icon })
-                .addTo(map)
-                .bindPopup(popupText);
-        });
-    },
-    error: function () {
-        console.error("Gagal ambil data lokasi dari SQLite.");
-    }
-});
+                        L.marker([parseFloat(item.lat), parseFloat(item.lng)], { icon })
+                            .addTo(map)
+                            .bindPopup(popupText);
+                    });
+
+                    if (response.length > 0) {
+            const last = response[response.length - 1];
+            const lastLat = parseFloat(last.lat);
+            const lastLng = parseFloat(last.lng);
+
+            map.setView([lastLat, lastLng], 13); // bisa ubah angka 13 untuk zoom level
+        }
+                },
+                error: function () {
+                    console.error("Gagal ambil data lokasi dari SQLite.");
+                }
+            });
 
 
             setInterval(() => {
