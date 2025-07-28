@@ -169,6 +169,9 @@
         let marker;
 
         $(document).ready(function() {
+            let prevLat = null;
+            let prevLng = null;
+
             setInterval(() => {
                 $.ajax({
                     type: "GET",
@@ -178,6 +181,13 @@
                         if (response && response.lat && response.lng) {
                             let lat = response.lat;
                             let lng = response.lng;
+
+                            if (lat === prevLat && lng === prevLng) {
+                                return;
+                            }
+
+                            prevLat = lat;
+                            prevLng = lng;
 
                             let latDMS = toDMS(lat, true);
                             let lngDMS = toDMS(lng, false);
@@ -189,15 +199,21 @@
                                 map.setView([lat, lng], map.getZoom());
                             }
 
-                            if (marker) {
-                                map.removeLayer(marker);
-                            }
+                            $.get(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`,
+                                function(data) {
+                                    let namaTempat = (data && data.display_name) ? data
+                                        .display_name : `Lat: ${lat}, Lng: ${lng}`;
 
-                            marker = L.marker([lat, lng]).addTo(map)
-                                .bindPopup(`Lokasi GPS: Lat ${lat}, Lng ${lng}`)
-                                .openPopup();
+                                    if (marker) {
+                                        map.removeLayer(marker);
+                                    }
 
-                            $('#location-info').text(`Lokasi saat ini: ${latDMS} ${lngDMS}`);
+                                    marker = L.marker([lat, lng]).addTo(map)
+                                        .bindPopup(`📍 ${namaTempat}`)
+                                        .openPopup();
+
+                                    $('#location-info').text(`Lokasi: ${namaTempat}`);
+                                });
                         } else {
                             $('#location-info').text('Data GPS tidak ditemukan.');
                         }
@@ -206,7 +222,165 @@
                         $('#location-info').text('Gagal mengambil data GPS.');
                     }
                 });
-            }, 5000);
+            }, 2000);
+
+           $.ajax({
+    type: "GET",
+    url: "data", // pastikan ini route Laravel yang return JSON
+    dataType: "json",
+    success: function (response) {
+        response.forEach(item => {
+            // Parse index_id JSON
+            let indexData = {};
+            try {
+                indexData = JSON.parse(item.index_id);
+            } catch (e) {
+                console.warn("Gagal parse index_id", e);
+            }
+
+            const color = indexData.color ?? "#ff0000"; // fallback merah
+            const tempat = item.location_name ?? "Tanpa Nama";
+
+            // Buat icon standar peta dengan warna custom (pakai SVG base64 warna custom jika mau dinamis)
+            const iconSVG = `
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 64 64">
+  <path d="M32 0C19 0 8 11 8 24c0 14.3 17.7 34.4 22.6 40.1a2 2 0 0 0 2.9 0C38.3 58.4 56 38.3 56 24 56 11 45 0 32 0zm0 34a10 10 0 1 1 0-20 10 10 0 0 1 0 20z" fill="${color}"/>
+  <path d="M27 26l4 4 8-8-2-2-6 6-2-2z" fill="#fff"/>
+</svg>
+`;
+
+const icon = L.divIcon({
+    html: iconSVG,
+    className: "", // kosongkan supaya tidak override style Leaflet
+    iconSize: [32, 32],
+    iconAnchor: [16, 32],
+    popupAnchor: [0, -32]
+});
+
+
+            const popupText = `
+                📍 ${tempat}<br>
+                🕒 ${indexData.tanggal ?? '-'}<br>
+                🌡️ Suhu: ${item.temp} °C<br>
+                💧 Kelembapan: ${item.hum} %<br>
+                🟡 CO₂: ${item.co2} ppm
+            `;
+
+            L.marker([parseFloat(item.lat), parseFloat(item.lng)], { icon })
+                .addTo(map)
+                .bindPopup(popupText);
+        });
+    },
+    error: function () {
+        console.error("Gagal ambil data lokasi dari SQLite.");
+    }
+});
+
+
+            setInterval(() => {
+                $.ajax({
+                    type: "GET",
+                    url: "https://elon-2025-default-rtdb.asia-southeast1.firebasedatabase.app/maps/Button.json",
+                    dataType: "json",
+                    success: function(response) {
+                        if (response == true) {
+                            $.ajax({
+                                url: "https://elon-2025-default-rtdb.asia-southeast1.firebasedatabase.app/maps.json",
+                                type: "PATCH",
+                                data: JSON.stringify({
+                                    Button: false
+                                }),
+                                contentType: "application/json",
+                                success: function(response) {
+
+                                    $.ajax({
+                                    type: "GET",
+                                    url: "https://elon-2025-default-rtdb.asia-southeast1.firebasedatabase.app/.json",
+                                    dataType: "json",
+                                    success: function(sensor) {
+                                        $.ajax({
+                                            type: "GET",
+                                            url: "https://elon-2025-default-rtdb.asia-southeast1.firebasedatabase.app/maps.json",
+                                            dataType: "json",
+                                            success: function(maps) {
+                                                let lat = maps.lat;
+                                                let lng = maps.lng;
+
+                                                function getRandomColor() {
+                                                    const letters = '0123456789ABCDEF';
+                                                    let color = '#';
+                                                    for (let i = 0; i < 6; i++) {
+                                                        color += letters[Math.floor(Math.random() * 16)];
+                                                    }
+                                                    return color;
+                                                }
+
+                                                $.get(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`, function(data) {
+                                                    let namaTempat = data.display_name || `Lat: ${lat}, Lng: ${lng}`;
+
+                                                    let form = {
+                                                        _token: '{{ csrf_token() }}',
+                                                        tanggal: new Date().toISOString(),
+                                                        color: getRandomColor(),
+                                                        button: false,
+
+                                                        latitude: lat,
+                                                        longitude: lng,
+                                                        lokasi: namaTempat,
+
+                                                        // Data Udara
+                                                        co2: sensor.SCD41.CO2,
+                                                        hum: sensor.SCD41.hum,
+                                                        temp: sensor.SCD41.temp,
+
+                                                        // Cahaya
+                                                        luminosity: sensor.ldr.luminosity,
+
+                                                        // Data Tanah
+                                                        airHumidity: sensor.soilSensor.airHumidity,
+                                                        conductivityValue: sensor.soilSensor.conductivityValue,
+                                                        moistureValue: sensor.soilSensor.moistureValue,
+                                                        nitrogenValue: sensor.soilSensor.nitrogenValue,
+                                                        phValue: sensor.soilSensor.phValue,
+                                                        phosphorusValue: sensor.soilSensor.phosphorusValue,
+                                                        potassiumValue: sensor.soilSensor.potassiumValue,
+                                                        temperatureValue: sensor.soilSensor.temperatureValue,
+                                                    };
+
+                                                    // Kirim data setelah form lengkap
+                                                    $.ajax({
+                                                        type: "POST",
+                                                        url: "data",
+                                                        data: form,
+                                                        dataType: "json",
+                                                        success: function(response) {
+                                                            console.log("Berhasil kirim:", response);
+                                                        },
+                                                        error: function(error) {
+                                                            console.error("Gagal kirim:", error);
+                                                        }
+                                                    });
+                                                });
+                                            }
+                                        });
+                                    },
+                                    error: function(err) {
+                                        console.error("Gagal ambil data:", err);
+                                    }
+                                });
+
+                                },
+                                error: function(err) {
+                                    console.error("Gagal update:", err);
+                                }
+                            });
+                            
+                            
+                        }
+                    }
+                });
+            }, 1000);
+
 
             setInterval(() => {
                 $.ajax({
@@ -214,7 +388,6 @@
                     url: "https://elon-2025-default-rtdb.asia-southeast1.firebasedatabase.app/.json",
                     dataType: "json",
                     success: function(response) {
-                        console.log();
                         // UDARA
                         $('#co2').text(response.SCD41.CO2 + ' ppm');
                         co2(response.SCD41.CO2);
@@ -237,7 +410,8 @@
 
 
                         // TANAH
-                        $('#conductivityValue').text(response.soilSensor.conductivityValue + ' mS/cm');
+                        $('#conductivityValue').text(response.soilSensor.conductivityValue +
+                            ' mS/cm');
                         konduktivitasTanah(response.soilSensor.conductivityValue);
 
                         $('#moistureValue').text(response.soilSensor.moistureValue + ' %');
@@ -249,13 +423,15 @@
                         $('#phValue').text(response.soilSensor.phValue + ' pH');
                         ph(response.soilSensor.phValue);
 
-                        $('#phosphorusValue').text(response.soilSensor.phosphorusValue + ' ppm');
+                        $('#phosphorusValue').text(response.soilSensor.phosphorusValue +
+                            ' ppm');
                         posfor(response.soilSensor.phosphorusValue);
 
                         $('#potassiumValue').text(response.soilSensor.potassiumValue + ' ppm');
                         kalium(response.soilSensor.potassiumValue);
 
-                        $('#temperatureValue').text(response.soilSensor.temperatureValue + ' °C');
+                        $('#temperatureValue').text(response.soilSensor.temperatureValue +
+                            ' °C');
                         temperaturUdara(response.soilSensor.temperatureValue);
                     }
                 });

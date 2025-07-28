@@ -1,6 +1,6 @@
 @extends('Main')
 @section('content')
-    <div class="courses-area mg-b-15">
+    {{-- <div class="courses-area mg-b-15">
         <div class="container-fluid">
             <div class="row">
                 <div class="col-lg-12 col-md-6 col-sm-6 col-xs-12">
@@ -24,7 +24,7 @@
                 </div>
             </div>
         </div>
-    </div>
+    </div> --}}
 
     <div class="courses-area mg-b-15">
         <div class="container-fluid">
