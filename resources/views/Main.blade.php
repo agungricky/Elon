@@ -35,6 +35,13 @@
     <script src="{{ url('https://code.jquery.com/jquery-3.6.0.min.js') }}"></script>
     <script src="{{ url('https://unpkg.com/leaflet@1.9.4/dist/leaflet.js') }}"
         integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+    <!-- CSS SweetAlert2 -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css">
+
+    <!-- JS SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
     <style>
         .active {
             background-color: rgb(227, 226, 235) !important;

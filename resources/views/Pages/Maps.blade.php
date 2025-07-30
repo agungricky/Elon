@@ -247,13 +247,13 @@
                             console.warn("Gagal parse index_id", e);
                         }
 
-                        const color = indexData.color ?? "#ff0000"; // fallback merah
+                        // const color = indexData.color ?? "#ff0000"; // fallback merah
                         const tempat = item.location_name ?? "Tanpa Nama";
 
                         // Buat icon standar peta dengan warna custom (pakai SVG base64 warna custom jika mau dinamis)
                         const iconSVG = `
                             <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 64 64">
-                            <path d="M32 0C19 0 8 11 8 24c0 14.3 17.7 34.4 22.6 40.1a2 2 0 0 0 2.9 0C38.3 58.4 56 38.3 56 24 56 11 45 0 32 0zm0 34a10 10 0 1 1 0-20 10 10 0 0 1 0 20z" fill="${color}"/>
+                            <path d="M32 0C19 0 8 11 8 24c0 14.3 17.7 34.4 22.6 40.1a2 2 0 0 0 2.9 0C38.3 58.4 56 38.3 56 24 56 11 45 0 32 0zm0 34a10 10 0 1 1 0-20 10 10 0 0 1 0 20z" fill="${item.index.color}"/>
                             <path d="M27 26l4 4 8-8-2-2-6 6-2-2z" fill="#fff"/>
                             </svg>
                         `;
@@ -266,7 +266,7 @@
                             popupAnchor: [0, -32]
                         });
 
-                        const rawTanggal = indexData.tanggal ?? null;
+                        const rawTanggal = item.index.tanggal ?? null;
                         let formattedTanggal = '-';
 
                         if (rawTanggal) {
@@ -278,25 +278,55 @@
                             });
                         }
 
-
                         const popupText = `
-                            📍 ${tempat}<br><hr>
-                            diambil : ${formattedTanggal ?? '-'} <br>
-                            kondisi :  Kondisi Sedikit Basah <br>
+                            <div id="popup-${item.id}" style="cursor:pointer; max-width: 250px;">
+                                📍 ${tempat}<br><hr>
+                                diambil : ${formattedTanggal ?? '-'} <br>
+                                <small id="extra-${item.id}">(klik untuk info selengkapnya)</small>
+                                <p id="info-${item.id}"></p>
+                            </div>
                         `;
 
-                        L.marker([parseFloat(item.lat), parseFloat(item.lng)], { icon })
-                            .addTo(map)
-                            .bindPopup(popupText);
+                        const marker = L.marker([parseFloat(item.lat), parseFloat(item.lng)], { icon })
+                                        .addTo(map)
+                                        .bindPopup(popupText);
+
+                        marker.on('popupopen', function () {
+                            const infoElement = $(`#info-${item.id}`);
+                            const extraElement = $(`#extra-${item.id}`);
+
+                            extraElement.on('click', function () {
+                                if (infoElement.is(':empty')) {
+                                    infoElement.html(`
+                                        <strong>Data Sensor:</strong><br>
+                                        CO<sub>2</sub>: ${item.co2} ppm<br>
+                                        Kelembapan Udara: ${item.hum} %<br>
+                                        Temperatur Udara: ${item.temp} °C<br>
+                                        Cahaya: ${item.luminosity} lux<br>
+                                        Kelembapan Tanah: ${item.airHumidity} %<br>
+                                        Konduktivitas: ${item.conductivityValue} mS/cm<br>
+                                        Nitrogen: ${item.nitrogenValue} ppm<br>
+                                        pH: ${item.phValue} pH<br>
+                                        Posfor: ${item.phosphorusValue} ppm<br>
+                                        Kalium: ${item.potassiumValue} ppm<br>
+                                        Suhu Tanah: ${item.temperatureValue} °C
+                                    `);
+                                    extraElement.text('(klik untuk sembunyikan info)');
+                                } else {
+                                    infoElement.empty();
+                                    extraElement.text('(klik untuk info selengkapnya)');
+                                }
+                            });
+                        });
                     });
 
                     if (response.length > 0) {
-            const last = response[response.length - 1];
-            const lastLat = parseFloat(last.lat);
-            const lastLng = parseFloat(last.lng);
+                        const last = response[response.length - 1];
+                        const lastLat = parseFloat(last.lat);
+                        const lastLng = parseFloat(last.lng);
 
-            map.setView([lastLat, lastLng], 13); // bisa ubah angka 13 untuk zoom level
-        }
+                        map.setView([lastLat, lastLng], 13); // bisa ubah angka 13 untuk zoom level
+                    }
                 },
                 error: function () {
                     console.error("Gagal ambil data lokasi dari SQLite.");
@@ -347,7 +377,7 @@
 
                                                     let form = {
                                                         _token: '{{ csrf_token() }}',
-                                                        tanggal: new Date().toISOString(),
+                                                        tanggal: new Date().toISOString().slice(0, 10),
                                                         color: getRandomColor(),
                                                         button: false,
 
@@ -375,18 +405,35 @@
                                                     };
 
                                                     // Kirim data setelah form lengkap
-                                                    $.ajax({
+                                                   $.ajax({
                                                         type: "POST",
                                                         url: "data",
                                                         data: form,
                                                         dataType: "json",
                                                         success: function(response) {
+                                                            Swal.fire({
+                                                                icon: 'success',
+                                                                title: 'Berhasil',
+                                                                text: 'Data berhasil disimpan!',
+                                                                timer: 2000,
+                                                                showConfirmButton: false
+                                                            }).then(() => {
+                                                                location.reload();
+                                                            });
                                                             console.log("Berhasil kirim:", response);
                                                         },
-                                                        error: function(error) {
-                                                            console.error("Gagal kirim:", error);
+                                                        error: function(xhr, status, error) {
+                                                            Swal.fire({
+                                                                icon: 'error',
+                                                                title: 'Gagal',
+                                                                text: `Terjadi kesalahan: ${xhr.status} - ${xhr.responseText}`,
+                                                                timer: 2000,
+                                                                showConfirmButton: false
+                                                            });
+                                                            console.error("Gagal kirim:", xhr.status, xhr.responseText);
                                                         }
                                                     });
+
                                                 });
                                             }
                                         });

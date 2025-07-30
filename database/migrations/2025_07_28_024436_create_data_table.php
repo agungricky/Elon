@@ -34,6 +34,8 @@ return new class extends Migration
             $table->integer('phosphorusValue');
             $table->integer('potassiumValue');
             $table->integer('temperatureValue');
+
+            $table->integer('kesimpulan');
             $table->timestamps();
         });
     }
