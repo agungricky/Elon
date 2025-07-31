@@ -28,6 +28,7 @@ class data extends Model
         'phosphorusValue',
         'potassiumValue',
         'temperatureValue',
+        'kesimpulan',
         'created_at',
         'updated_at',
     ];
