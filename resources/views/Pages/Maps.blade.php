@@ -282,6 +282,10 @@
                             <div id="popup-${item.id}" style="cursor:pointer; max-width: 250px;">
                                 📍 ${tempat}<br><hr>
                                 diambil : ${formattedTanggal ?? '-'} <br>
+                                udara : ${item.udara ?? '-'} <br>
+                                cahaya : ${item.cahaya ?? '-'} <br>
+                                tanah : ${item.tanah ?? '-'} <br>
+                                cuaca dominan: ${item.kesimpulan ?? '-'} <br>
                                 <small id="extra-${item.id}">(klik untuk info selengkapnya)</small>
                                 <p id="info-${item.id}"></p>
                             </div>
